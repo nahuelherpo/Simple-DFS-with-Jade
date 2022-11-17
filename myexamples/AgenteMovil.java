@@ -28,6 +28,7 @@ public class AgenteMovil extends Agent
 	/*Para saber a donde debo migrar el agente usamos un HashMap, el
 	cual para cada contenedor indica cual es el siguiente.*/
 	private HashMap<String, String> containersChain = new HashMap<String, String>();
+	private HashMap<String, String> filesOfServer = new HashMap<String, String>();
 
 	private boolean debug = true;
 
@@ -39,9 +40,9 @@ public class AgenteMovil extends Agent
 
 	private void initializeHashMap() {
 		//Hay tres contenedores y un contenedor principal
-		this.containersChain.put("Container-1", "Main-Container");
-		this.containersChain.put("Container-2", "Container-1");
-		this.containersChain.put("Container-3", "Container-2");
+		this.filesOfServer.put("prac4.pdf", "DataServer1");
+		this.filesOfServer.put("soy_texto.txt", "DataServer2");
+		this.filesOfServer.put("otro_text.txt", "DataServer2");
 	}
 
 	/*En nuestro caso este método se va a ejecutar solo en el contenedor cliente,
@@ -65,11 +66,9 @@ public class AgenteMovil extends Agent
 
 		//Setup of FS configuration selected --PEN--
 		try {
-			//-r or -w
+			//Tomo los argumentos, la operacion y el nombre del archivo
 			this.operation = args[0].toString();
 			this.fileName = args[1].toString();
-			//mmmmm, esto habria que retrasarlo, ya que no sabemos en qué contenedor está
-			//this.doPaths(args[1].toString());
 		} catch (ArrayIndexOutOfBoundsException e) {
 			System.out.println("Error: Missing arguments");
 			System.exit(0);

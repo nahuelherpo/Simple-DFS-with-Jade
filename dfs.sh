@@ -14,11 +14,12 @@ fi
 echo "Compiling"
 javac -classpath lib/jade.jar -d classes myexamples/AgenteMovil.java
 #echo "Up the main container"
-java -cp lib/jade.jar:classes jade.Boot -gui &
+java -cp lib/jade.jar:classes jade.Boot -gui -container-name ServerDFS &
 sleep 5
 echo "Upping the others container"
-for agents in 0 1; do
-	java -cp lib/jade.jar:classes jade.Boot -gui -container -host localhost &
+for container in DataServer1 DataServer2; do
+	java -cp lib/jade.jar:classes jade.Boot -gui -container -container-name "${container}" -local-host localhost &
 	sleep 2
 done;
-java -cp lib/jade.jar:classes jade.Boot -gui -container -host localhost -agents "myAgent:AgenteMovil(${OPERATION},$2)"
+java -cp lib/jade.jar:classes jade.Boot -gui -container -container-name Client \
+-local-host localhost -agents "myAgent:AgenteMovil(${OPERATION},$2)"
