@@ -1,5 +1,6 @@
 import jade.core.*;
 import java.util.HashMap;
+import java.util.Random;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -9,18 +10,17 @@ import java.io.InputStream;
 
 public class AgenteMovil extends Agent
 {
-	//new variables
-	private Location origen = null;
-	//operación y paths de los archivos.
+	//operación y nombre del archivo.
 	private String operation = "";
-	private String destiny_path = "";
-	private String origin_path = "";
 	private String fileName = "";
+	//Ubicacion o destino del archivo
+	private String fileLocation = null;
 	//Para controlar la lectura y escritura del archivo.
 	private int position = 0;
-	private int read_size = 1024;
+	private int read_size = 4096;
 	private byte[] data = null;
 	private int bytes_read;
+	private long fileSize = -1;
 	//Verifica si finaliza la operación.
 	private boolean finish = false;
 	private int cont = 0;
@@ -74,13 +74,9 @@ public class AgenteMovil extends Agent
 			System.exit(0);
 		}
 
-		/*Migro el agente en el orden de la cadena establecido, a menos que ya
-		se haya hecho la operacion, en tal caso voy directo al MainContainer.*/
-		//En princio sigue toda la cadena por defecto --PEN--
+		/*Migro el agente al contenedor ServerDFS, el cual atendera mi solicitud*/
 		try {
-			if (this.debug)
-				System.out.println("nextContainer " + this.containersChain.get(origen.getID().split("@")[0]));
-			ContainerID destino = new ContainerID(this.containersChain.get(origen.getID().split("@")[0]), null);
+			ContainerID destino = new ContainerID("ServerDFS", null);
 			System.out.println("Migrando el agente a " + destino.getID());
 			doMove(destino);
 		} catch (Exception e) {
@@ -92,50 +88,90 @@ public class AgenteMovil extends Agent
 	/* Este metodo se ejecuta al llegar a un contenedor como resultado de una migracin */
 	protected void afterMove() {
 
-		Location origen = here();
+		Location location = here();
 
 		if (debug) {
 			System.out.println("\nAFTER_MOVE\n");
 			System.out.println("\nHola, soy el agente migrado mi nombre local es " + getLocalName());
 			System.out.println("Mi nombre completo... " + getName());
-			System.out.println("Estoy en la location " + origen.getID() + "\n");
+			System.out.println("Estoy en la location " + location.getID() + "\n");
 		}
 
-		if (!origen.getName().equals("Main-Container")) {
-
-			if (new File("Server" + origen.getID().charAt(10) + "LocalSpace/" + fileName).isFile()) {
-				System.out.println("File finded");
-				this.finded = true;
-			}
-
-			/*Migro el agente en el orden de la cadena establecido, a menos que ya
-			se haya hecho la operacion, en tal caso voy directo al MainContainer.*/
-			//En princio sigue toda la cadena por defecto --PEN--
-			if (!finded) {
-				try {
-					ContainerID destino = new ContainerID(this.containersChain.get(origen.getID().split("@")[0]), null);
-					System.out.println("Migrando el agente a " + destino.getID());
-					doMove(destino);
-				} catch (Exception e) {
-					System.out.println("\nNo fue posible migrar el agente\n");
-				}
-			} else { /* Si ya fue encontrado me voy directo al MainContainer*/
-				try {
-					ContainerID destino = new ContainerID("Main-Container", null);
-					System.out.println("Migrando el agente a " + destino.getID());
-					doMove(destino);
-				} catch (Exception e) {
-					System.out.println("\nNo fue posible migrar el agente\n");
-				}
-			}
-
-		} else {
+		if (location.getName().equals("ServerDFS")) {
 			if (debug)
-				System.out.println("El agente esta en el MainContainer");
-			if (operationCompleted)
-				System.out.println("La operacion fue realizada con exito");
-			if (!finded)
-				System.out.println("Error: Archivo no encontrado");
+				System.out.println("Estoy en el ServerDFS");
+			if (this.operation.equals("-r")) {
+				//Chequeo si el archivo existe
+				if (this.filesOfServer.keySet().contains(fileName)) {
+					//Si existe me fijo en que contenedor esta
+					this.fileLocation = this.filesOfServer.get(fileName);
+					System.out.println("El archivo existe y esta en el contenedor " + this.fileLocation);
+					//Ahora me voy al DataServer para empezar a leer
+					ContainerID destino = new ContainerID(this.fileLocation, null);
+					System.out.println("Migrando el agente a " + destino.getID());
+					doMove(destino);
+				} else {
+					System.out.println("The file does not exist");
+					ContainerID destino = new ContainerID("Client", null);
+					System.out.println("Migrando el agente a " + destino.getID());
+					doMove(destino);
+				}
+			} else {
+				//Si no es de lectura la operacion es de escritura
+				//Verifico que el archivo no exista, en tal caso decido en donde guardarlo
+				if (!this.filesOfServer.keySet().contains(fileName)) {
+					//Uso la clase random para mandar el archivo a un server de datos al azar
+					if ((new Random()).nextInt(2) == 0) {
+						this.fileLocation = "DataServer1";
+						System.out.println("0");
+					} else {
+						this.fileLocation = "DataServer2";
+						System.out.println("1");
+					}
+					//System.out.println("El archivo existe y esta en el contenedor " + this.filesOfServer.get(fileName));
+				} else {
+					System.out.println("The file already exists");
+					ContainerID destino = new ContainerID("Client", null);
+					System.out.println("Migrando el agente a " + destino.getID());
+					doMove(destino);
+				}
+			}
+		} else {
+			if (location.getName().equals("DataServer1") || location.getName().equals("DataServer2")) {
+				if (this.operation.equals("-r")) {
+					//Es una operacion de lectura sobre el server
+					//leo el archivo
+					this.read(location.getName() + "LocalSpace/" + fileName);
+					//volver al cliente
+					ContainerID destino = new ContainerID("Client", null);
+					System.out.println("Migrando el agente a " + destino.getID());
+					doMove(destino);
+				} else {
+					//Es una operacion de escritura sobre el server
+				}
+			} else {
+				//Es el contenedor Cliente
+				if (this.operation.equals("-r")) {
+					//Es una operacion de lectura sobre el server
+					if (!(bytes_read == 0)) {
+						//Escribo
+						this.write(location.getName() + "LocalSpace/" + fileName);
+						//Me fijo si la operacion termino....
+						if (!finish) {
+							//Vuelvo al DataServer a buscar mas
+							ContainerID destino = new ContainerID(this.fileLocation, null);
+							System.out.println("Migrando el agente a " + destino.getID());
+							doMove(destino);
+						} else {
+							System.out.println("Lectura completada con exito");
+						}
+					} else {
+						System.out.println("El archivo no existe");
+					}
+				} else {
+					//Es una operacion de escritura sobre el server
+				}
+			}
 		}
 
 	}
@@ -144,16 +180,16 @@ public class AgenteMovil extends Agent
 	 * Lee en bytes la cantidad de datos indicada por la variable read_size el archivo 
 	 * que se encuentra en origin_path y asigna los datos leidos en la variable data.
 	 */
-	private void read(){
+	private void read(String filePath){
         bytes_read = 0;
         try {
-            InputStream inStream = new FileInputStream(origin_path);
+            InputStream inStream = new FileInputStream(filePath);
             data = new byte[read_size];
             inStream.skip(position);
             bytes_read = inStream.read(data, 0, read_size);
             inStream.close();
-        } catch(IOException e){
-        	System.out.println("Error occurred: "+ e.getMessage());
+        } catch(IOException e) {
+        	System.out.println("Error occurred: " + e.getMessage());
         }
     }
 
@@ -161,10 +197,10 @@ public class AgenteMovil extends Agent
 	 * Escribe en bytes la cantidad de datos indicada por la variable read_size sobre el
 	 * archivo que se encuentra en destiny_path los datos indicados en la variable data.
 	 */
-    private void write(){
+    private void write(String filePath){
         try {
-        	File file = new File(destiny_path);
-        	FileOutputStream outStream = new FileOutputStream(file,file.exists());
+        	File file = new File(filePath);
+        	FileOutputStream outStream = new FileOutputStream(file, file.exists());
             if (bytes_read > 0) {
             	outStream.write(data, 0, bytes_read);
                 data = null;
