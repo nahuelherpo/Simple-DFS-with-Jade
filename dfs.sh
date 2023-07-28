@@ -1,4 +1,14 @@
 #!/bin/bash
+#
+# Run example
+#
+# Author: Herpo Nahuel
+#
+# Date: Oct, 2022
+#
+#
+
+
 if [ $# -eq 0 ] || [ $# -eq 1 ]; then
 	echo "You must indicate the operation on the DFS and the file path"
 	exit 0
