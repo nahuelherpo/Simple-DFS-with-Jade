@@ -1,3 +1,15 @@
+/**
+ * Simple Distributed File System (DFS) Implementation
+ * 
+ * Author: Nahuel Herpo
+ * Release Date: October, 2022
+ * 
+ * Description:
+ * This Java program implements a Distributed File System (DFS) that allows clients
+ * to read and write files in a distributed manner.
+ * 
+ */
+
 import jade.core.*;
 import java.io.*;
 import java.util.HashMap;
